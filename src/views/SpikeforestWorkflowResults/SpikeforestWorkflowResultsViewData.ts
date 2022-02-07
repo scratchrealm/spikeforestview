@@ -1,7 +1,7 @@
 import { isString } from "figurl/viewInterface/kacheryTypes"
 import { isArrayOf, isEqualTo, default as validateObject } from "figurl/viewInterface/validateObject"
 
-type ComparisonWithTruthUnit = {
+export type ComparisonWithTruthUnit = {
     unit_id: number
     accuracy: number
     best_unit: number
