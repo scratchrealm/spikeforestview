@@ -1,5 +1,5 @@
-import { isString } from "figurl/viewInterface/kacheryTypes"
-import { isArrayOf, isEqualTo, default as validateObject } from "figurl/viewInterface/validateObject"
+import { isOneOf, isString } from "figurl/viewInterface/kacheryTypes"
+import { default as validateObject, isArrayOf, isEqualTo, isNull, optional } from "figurl/viewInterface/validateObject"
 
 export type ComparisonWithTruthUnit = {
     unit_id: number
@@ -36,6 +36,7 @@ export type SpikeforestWorkflowResult = {
     }
     sorting_npz_uri: string
     sorting_true_npz_uri: string
+    sorting_figurl?: string
 }
 
 export const isSpikeforestWorkflowResult = (x: any): x is SpikeforestWorkflowResult => {
@@ -46,8 +47,9 @@ export const isSpikeforestWorkflowResult = (x: any): x is SpikeforestWorkflowRes
         recording_nwb_uri: isString,
         sorter: () => (true),
         sorting_npz_uri: isString,
-        sorting_true_npz_uri: isString
-    })
+        sorting_true_npz_uri: isString,
+        sorting_figurl: optional(isOneOf([isNull, isString]))
+    }, {allowAdditionalFields: true})
 }
 
 export type SpikeforestWorkflowResultsViewData = {

@@ -54,6 +54,7 @@ const ExpandingHeatmapTableRow: FunctionComponent<ExpandingHeatmapTableRowProps>
                         textAlign={cell.textAlign}
                         hideContent={collapsedState === "Expanded" && i !== 0}
                         handleCellSelected={Props.cellSelectionHandler}
+                        onClick={cell.onClick}
                     />
                 ))}
             </tr>

@@ -15,6 +15,7 @@ export interface CellType {
     color?: string,
     bgcolor?: string,
     textAlign?: any, // can't seem to find the actual definition anywhere
+    onClick?: () => void
 }
 
 type CellProps = CellType & {
@@ -60,8 +61,9 @@ export const RowToggleCell: FunctionComponent<RowToggleProps> = (Props: RowToggl
 }
 
 const ExpandingHeatmapTableCell: FunctionComponent<CellProps> = (Props: CellProps) => {
-    const contentSpan = Props.link  ? <Hyperlink href={Props.link}>{Props.text}</Hyperlink>
-                                    : <span>{Props.text}</span>
+    const contentSpan = Props.link  ? <a href={Props.link} target='_blank' rel="noreferrer" style={{color: Props.color}}>{Props.text}</a>
+                        : Props.onClick ? <Hyperlink onClick={Props.onClick}><span style={{color: Props.color}}>{Props.text}</span></Hyperlink>
+                        : <span>{Props.text}</span>
     const classList: string[] = useMemo(() => {
         const list: string[] = []
         // find a neater way to do this?

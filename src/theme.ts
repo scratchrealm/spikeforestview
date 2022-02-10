@@ -43,13 +43,14 @@ const themeOptions: ThemeOptions = {
                 maxHeight: 30,
                 padding: '6px 0px'
             }
+        },
+        MuiTableCell: {
+            root: {  //This can be referred from Material UI API documentation. 
+                fontSize: 16,
+                padding: '4px 8px',
+                backgroundColor: "#fafafa",
+            }
         }
-        // MuiTableCell: {
-        //     root: {  //This can be referred from Material UI API documentation. 
-        //         padding: '4px 8px',
-        //         backgroundColor: "#fafafa",
-        //     }
-        // },
     },
 }
 
