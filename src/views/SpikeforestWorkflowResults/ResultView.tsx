@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableHead, TableRow } from '@material-ui/core';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useMemo } from 'react';
 import { SpikeforestWorkflowResult } from './SpikeforestWorkflowResultsViewData';
 
 type Props = {
@@ -7,6 +7,15 @@ type Props = {
 }
 
 const ResultView: FunctionComponent<Props> = ({result}) => {
+    const unitMetricNames: string[] = useMemo(() => {
+        if (result.sorting_true_metrics) {
+            const a = result.sorting_true_metrics.unit_metrics[0]
+            if (a) {
+                return Object.keys(a).filter(metricName => (metricName !== 'unitId'))
+            }
+        }
+        return []
+    }, [result])
     return (
         <span>
             <Table className="NiceTable">
@@ -71,6 +80,11 @@ const ResultView: FunctionComponent<Props> = ({result}) => {
                         <TableCell>Accuracy</TableCell>
                         <TableCell>Precision</TableCell>
                         <TableCell>Recall</TableCell>
+                        {
+                            unitMetricNames.map(metricName => (
+                                <TableCell>{metricName}</TableCell>
+                            ))
+                        }
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -82,6 +96,11 @@ const ResultView: FunctionComponent<Props> = ({result}) => {
                                 <TableCell>{formatNum(x.accuracy)}</TableCell>
                                 <TableCell>{formatNum(x.num_matches / (x.num_matches + x.num_false_positives))}</TableCell>
                                 <TableCell>{formatNum(x.num_matches / (x.num_matches + x.num_false_negatives))}</TableCell>
+                                {
+                                    unitMetricNames.map(metricName => (
+                                        <TableCell>{formatMetricValue(trueUnitMetricValue(result, x.unit_id, metricName))}</TableCell>
+                                    ))
+                                }
                             </TableRow>
                         ))
                     }
@@ -89,6 +108,19 @@ const ResultView: FunctionComponent<Props> = ({result}) => {
             </Table>
         </span>
     )
+}
+
+const trueUnitMetricValue = (result: SpikeforestWorkflowResult, unitId: number, metricName: string) => {
+    if (!result.sorting_true_metrics) return undefined
+    const a = result.sorting_true_metrics.unit_metrics.filter(x => (x['unitId'] === unitId))[0]
+    if (!a) return
+    return a[metricName]
+}
+
+const formatMetricValue = (x: any) => {
+    if (!x) return x
+    if (typeof(x) === 'number') return x.toPrecision(4)
+    return x
 }
 
 const formatNum = (x: number) => {

@@ -36,6 +36,10 @@ export type SpikeforestWorkflowResult = {
     }
     sorting_npz_uri: string
     sorting_true_npz_uri: string
+    sorting_true_metrics_uri?: string | null
+    sorting_true_metrics?: {
+        unit_metrics: {[key: string]: any}[]
+    } | null
     sorting_figurl?: string
 }
 
@@ -48,6 +52,8 @@ export const isSpikeforestWorkflowResult = (x: any): x is SpikeforestWorkflowRes
         sorter: () => (true),
         sorting_npz_uri: isString,
         sorting_true_npz_uri: isString,
+        sorting_true_metrics_uri: optional(isOneOf([isNull, isString])),
+        sorting_true_metrics: optional(() => (true)),
         sorting_figurl: optional(isOneOf([isNull, isString]))
     }, {allowAdditionalFields: true})
 }
