@@ -13,21 +13,23 @@ export type ComparisonWithTruthUnit = {
     f_p: number
 }
 
+export type SpikeforestWorkflowRecording = {
+    durationSec: number
+    name: string
+    numChannels: number
+    numTrueUnits: number
+    recordingUri: string
+    sampleRateHz: number
+    sortingTrueUri: string
+    spikeSign: number
+    studyName: string
+    studySetName: string
+}
+
 export type SpikeforestWorkflowResult = {
     comparison_with_truth_uri: string
     comparison_with_truth: ComparisonWithTruthUnit[]
-    recording: {
-        durationSec: number
-        name: string
-        numChannels: number
-        numTrueUnits: number
-        recordingUri: string
-        sampleRateHz: number
-        sortingTrueUri: string
-        spikeSign: number
-        studyName: string
-        studySetName: string
-    }
+    recording: SpikeforestWorkflowRecording
     recording_nwb_uri: string
     sorter: {
         name: string

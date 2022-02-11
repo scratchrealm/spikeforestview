@@ -1,43 +1,23 @@
 import { Grid } from '@material-ui/core';
 import Hyperlink from 'commonComponents/Hyperlink/Hyperlink';
-import * as d3 from "d3";
 import React, { FunctionComponent, useCallback, useEffect, useMemo, useState } from 'react';
 import { FormatType, MetricType } from './ConfigurationCards/ConfigurationTypes';
 import MetricCard from './ConfigurationCards/MetricCard';
 import ModeCard from './ConfigurationCards/ModeCard';
 import SliderCard from './ConfigurationCards/SliderCard';
+import { createRecordingRow, createStudyRow, createStudySetRow } from './createTableRow';
 import ExpandingHeatmapTable from './ExpandingHeatmapTable/ExpandingHeatmapTable';
 import { ExpandingHeatmapTableRowType } from './ExpandingHeatmapTable/ExpandingHeatmapTableRow';
+import { organizeResults } from './organizeResults';
+import { Page } from './Page';
 import ResultView from './ResultView';
 import { ComparisonWithTruthUnit, SpikeforestWorkflowResult, SpikeforestWorkflowResultsViewData } from './SpikeforestWorkflowResultsViewData';
+import TrueUnitsTable, { TrueUnit } from './TrueUnitsTable';
 
 type Props = {
     data: SpikeforestWorkflowResultsViewData
     width: number
     height: number
-}
-
-type Page = {
-    type: 'main'
-} | {
-    type: 'studyset'
-    studySetName: string
-} | {
-    type: 'study'
-    studySetName: string
-    studyName: string
-} | {
-    type: 'recording'
-    studySetName: string
-    studyName: string
-    recordingName: string
-} | {
-    type: 'result'
-    studySetName: string
-    studyName: string
-    recordingName: string
-    sorterName: string
-    result?: SpikeforestWorkflowResult
 }
 
 const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, height}) => {
@@ -179,6 +159,31 @@ const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, 
         }
     }, [page])
 
+    const trueUnits = useMemo(() => {
+        const filteredResults =
+            page.type === 'recording' ? results.filter(r => ((r.recording.studySetName === page.studySetName) && (r.recording.studyName === page.studyName) && (r.recording.name === page.recordingName))) :
+            page.type === 'study' ? results.filter(r => ((r.recording.studySetName === page.studySetName) && (r.recording.studyName === page.studyName))) :
+            page.type === 'studyset' ? results.filter(r => (r.recording.studySetName === page.studySetName)) :
+            undefined
+        if (!filteredResults) return undefined
+        const trueUnits: TrueUnit[] = []
+        const X: {[key: string]: TrueUnit} = {}
+        for (let r of filteredResults) {
+            for (let u of r.comparison_with_truth) {
+                const key = r.recording.studyName + '::' + r.recording.name + '::' + u.unit_id
+                if (!(key in X)) {
+                    const tu = {
+                        recording: r.recording,
+                        comparisonWithTruthUnitsBySorter: {}
+                    }
+                    X[key] = tu
+                    trueUnits.push(tu)
+                }
+                X[key].comparisonWithTruthUnitsBySorter[r.sorter.name] = u
+            }
+        }
+        return trueUnits
+    }, [results, page])
 
     return (
         <div style={{padding: 50}}>
@@ -233,124 +238,19 @@ const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, 
                                 rows={rows}
                                 onCellSelected={() => {}}
                             />
+                            {
+                                trueUnits ? (
+                                    <TrueUnitsTable
+                                        trueUnits={trueUnits}
+                                    />
+                                ) : <span />
+                            }
                         </div>
                     )
                 }
             </div>
         </div>
     )
-}
-
-const createStudySetRow = (studySet: OrganizedStudySet, setPage: (page: Page) => void, tableValueForResults: (results: SpikeforestWorkflowResult[]) => number, formatTableValue: (x: number) => string) => {
-    return {
-        id: studySet.studySetName,
-        cells: [
-            {
-                id: '_name',
-                text: studySet.studySetName,
-                color: 'black',
-                bgcolor: 'white',
-                textAlign: 'right',
-                cellWrap: true,
-                onClick: () => {setPage({type: 'studyset', studySetName: studySet.studySetName})}
-            },
-            ...studySet.resultsBySorter.map(x => {
-                const val = tableValueForResults(x.results)
-                return {
-                    id: x.sorterName,
-                    text: formatTableValue(val),
-                    textAlign: 'center',
-                    bgcolor: computeBackgroundColor(val, 'average'),
-                    color: computeForegroundColor(val)
-                }
-            })
-        ],
-        subrows: studySet.studies.map((study) => (
-            createStudyRow(study, setPage, tableValueForResults, formatTableValue)
-        ))
-    }
-}
-
-const createStudyRow = (study: OrganizedStudy, setPage: (page: Page) => void, tableValueForResults: (results: SpikeforestWorkflowResult[]) => number, formatTableValue: (x: number) => string) => {
-    return {
-        id: study.studyName,
-        cells: [
-            {
-                id: '_name2',
-                text: study.studyName,
-                color: 'black',
-                bgcolor: 'white',
-                textAlign: 'right',
-                cellWrap: true,
-                onClick: () => {setPage({type: 'study', studySetName: study.studySetName, studyName: study.studyName})}
-            },
-            ...study.resultsBySorter.map(x => {
-                const val = meanOfArrays(x.results.map(r => (
-                    r.comparison_with_truth.map(u => (u.accuracy))
-                )))
-                return {
-                    id: x.sorterName,
-                    text: formatTableValue(val),
-                    textAlign: 'center',
-                    bgcolor: computeBackgroundColor(val, 'average'),
-                    color: computeForegroundColor(val)
-                }
-            }
-        )],
-        subrows: study.recordings.map((recording) => (
-            createRecordingRow(recording, setPage, tableValueForResults, formatTableValue)
-        ))
-    }
-}
-
-const createRecordingRow = (recording: OrganizedRecording, setPage: (page: Page) => void, tableValueForResults: (results: SpikeforestWorkflowResult[]) => number, formatTableValue: (x: number) => string) => {
-    return {
-        id: recording.recordingName,
-        cells: [
-            {
-                id: '_name3',
-                text: recording.recordingName,
-                color: 'black',
-                bgcolor: 'white',
-                textAlign: 'right',
-                cellWrap: true,
-                onClick: () => {setPage({type: 'recording', studySetName: recording.studySetName, studyName: recording.studyName, recordingName: recording.recordingName})}
-            },
-            ...recording.resultsBySorter.map(x => {
-                const val = meanOfArrays(x.results.map(r => (
-                    r.comparison_with_truth.map(u => (u.accuracy))
-                )))
-                const result = x.results.length === 1 ? x.results[0] : undefined
-                return {
-                    id: x.sorterName,
-                    text: formatTableValue(val),
-                    textAlign: 'center',
-                    bgcolor: computeBackgroundColor(val, 'average'),
-                    color: computeForegroundColor(val),
-                    onClick: () => {setPage({type: 'result', studySetName: recording.studySetName, studyName: recording.studyName, recordingName: recording.recordingName, sorterName: x.sorterName, result})}
-                    // link: result0 ? result0.sorting_figurl : undefined
-                }
-            })
-        ],
-        subrows: []
-    }
-}
-
-const computeBackgroundColor = (
-    val: number | undefined,
-    format: "count" | "average" | "cpu"
-) => {
-    if (val === undefined) return "white"
-    let square = Math.pow(val, 2)
-    if (format === "count") return d3.interpolateGreens(square)
-    else if (format === "average") return d3.interpolateBlues(square)
-    else if (format === "cpu") return d3.interpolateYlOrRd(square)
-    else return "white"
-}
-
-const computeForegroundColor = (val: number | undefined) => {
-    if (val === undefined) return "black"
-    return val < 0.7 ? "black" : "white"
 }
 
 const meanOfArrays = (x: number[][]) => {
@@ -368,112 +268,6 @@ const countAboveThresholdOfArrays = (x: number[][], threshold: number) => {
 
 const countAboveThreshold = (x: number[], threshold: number) => {
     return x.filter(a => (a >= threshold)).length
-}
-
-type OrganizedResults = {
-    sorterNames: string[]
-    resultsBySorter: {
-        sorterName: string
-        results: SpikeforestWorkflowResult[]
-    }[]
-    studySets: OrganizedStudySet[]
-}
-
-type OrganizedStudySet = {
-    studySetName: string
-    resultsBySorter: {
-        sorterName: string
-        results: SpikeforestWorkflowResult[]
-    }[]
-    studies: OrganizedStudy[]
-}
-
-type OrganizedStudy = {
-    studySetName: string
-    studyName: string
-    resultsBySorter: {
-        sorterName: string
-        results: SpikeforestWorkflowResult[]
-    }[]
-    recordings: OrganizedRecording[]
-}
-
-type OrganizedRecording = {
-    studySetName: string
-    studyName: string
-    recordingName: string
-    resultsBySorter: {
-        sorterName: string
-        results: SpikeforestWorkflowResult[]
-    }[]
-}
-
-const organizeResults = (results: SpikeforestWorkflowResult[]): OrganizedResults => {
-    const allStudySetNames = unique(results.map(r => (r.recording.studySetName)))
-    allStudySetNames.sort()
-
-    const allSorterNames = unique(results.map(r => (r.sorter.name)))
-    allSorterNames.sort()
-
-    return {
-        sorterNames: allSorterNames,
-        resultsBySorter: allSorterNames.map(sorterName => ({
-            sorterName,
-            results: results.filter(r => (r.sorter.name === sorterName))
-        })),
-        studySets: allStudySetNames.map(studySetName => (
-            organizeStudySet(studySetName, results.filter(r => (r.recording.studySetName === studySetName)), allSorterNames)
-        ))
-    }
-}
-
-const organizeStudySet = (studySetName: string, results: SpikeforestWorkflowResult[], sorterNames: string[]): OrganizedStudySet => {
-    const allStudyNames = unique(results.map(r => (r.recording.studyName)))
-    allStudyNames.sort()
-
-    return {
-        studySetName,
-        resultsBySorter: sorterNames.map(sorterName => ({
-            sorterName,
-            results: results.filter(r => (r.sorter.name === sorterName))
-        })),
-        studies: allStudyNames.map(studyName => (
-            organizeStudy(studySetName, studyName, results.filter(r => (r.recording.studyName === studyName)), sorterNames)
-        ))
-    }
-}
-
-const organizeStudy = (studySetName: string, studyName: string, results: SpikeforestWorkflowResult[], sorterNames: string[]): OrganizedStudy => {
-    const allRecordingNames = unique(results.map(r => (r.recording.name)))
-    allRecordingNames.sort()
-
-    return {
-        studySetName,
-        studyName,
-        resultsBySorter: sorterNames.map(sorterName => ({
-            sorterName,
-            results: results.filter(r => (r.sorter.name === sorterName))
-        })),
-        recordings: allRecordingNames.map(recordingName => (
-            organizeRecording(studySetName, studyName, recordingName, results.filter(r => (r.recording.name === recordingName)), sorterNames)
-        ))
-    }
-}
-
-const organizeRecording = (studySetName: string, studyName: string, recordingName: string, results: SpikeforestWorkflowResult[], sorterNames: string[]): OrganizedRecording => {
-    return {
-        studySetName,
-        studyName,
-        recordingName,
-        resultsBySorter: sorterNames.map(sorterName => ({
-            sorterName,
-            results: results.filter(r => (r.sorter.name === sorterName))
-        }))
-    }
-}
-
-const unique = (x: string[]) => {
-    return [...new Set(x)]
 }
 
 export default SpikeforestWorkflowResultsView
