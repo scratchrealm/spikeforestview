@@ -26,16 +26,18 @@ export type SpikeforestWorkflowRecording = {
     studySetName: string
 }
 
+export type SpikeforestWorkflowSorter = {
+    name: string
+    algorithm: string
+    sorting_params: {[key: string]: any}
+}
+
 export type SpikeforestWorkflowResult = {
     comparison_with_truth_uri: string
     comparison_with_truth: ComparisonWithTruthUnit[]
     recording: SpikeforestWorkflowRecording
     recording_nwb_uri: string
-    sorter: {
-        name: string
-        algorithm: string
-        sorting_params: {[key: string]: any}
-    }
+    sorter: SpikeforestWorkflowSorter
     sorting_npz_uri: string
     sorting_true_npz_uri: string
     sorting_true_metrics_uri?: string | null

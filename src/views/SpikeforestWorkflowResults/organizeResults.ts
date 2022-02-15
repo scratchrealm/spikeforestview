@@ -2,6 +2,7 @@ import { SpikeforestWorkflowResult } from "./SpikeforestWorkflowResultsViewData"
 
 export type OrganizedResults = {
     sorterNames: string[]
+    trueUnitMetricNames: string[]
     resultsBySorter: {
         sorterName: string
         results: SpikeforestWorkflowResult[]
@@ -45,8 +46,22 @@ export const organizeResults = (results: SpikeforestWorkflowResult[]): Organized
     const allSorterNames = unique(results.map(r => (r.sorter.name)))
     allSorterNames.sort()
 
+    let allTrueUnitMetricNames: string[] = []
+    for (let r of results) {
+        if (r.sorting_true_metrics) {
+            for (let a of r.sorting_true_metrics.unit_metrics) {
+                for (let b in a) {
+                    if (b !== 'unitId') allTrueUnitMetricNames.push(b)
+                }
+            }
+        }
+    }
+    allTrueUnitMetricNames = unique(allTrueUnitMetricNames)
+    allTrueUnitMetricNames.sort()
+
     return {
         sorterNames: allSorterNames,
+        trueUnitMetricNames: allTrueUnitMetricNames,
         resultsBySorter: allSorterNames.map(sorterName => ({
             sorterName,
             results: results.filter(r => (r.sorter.name === sorterName))

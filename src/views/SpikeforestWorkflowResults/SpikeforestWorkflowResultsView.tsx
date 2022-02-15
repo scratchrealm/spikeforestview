@@ -72,6 +72,17 @@ const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, 
         else return 0
     }), [metric])
 
+    const formatMetricValue = useMemo(() => ((x: number) => {
+        return `${x.toFixed(3)}`
+    }), [])
+
+    const formatTrueUnitMetricValue = useMemo(() => ((trueUnitMetricName: string, x: number) => {
+        if (trueUnitMetricName === 'snr') {
+            return `${x.toFixed(3)}`
+        }
+        else return `${x}`
+    }), [])
+
     const tableValueForResults = useMemo(() => ((results: SpikeforestWorkflowResult[]) => {
         if (format === 'average') {
             return meanOfArrays(results.map(r => (
@@ -169,12 +180,26 @@ const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, 
         const trueUnits: TrueUnit[] = []
         const X: {[key: string]: TrueUnit} = {}
         for (let r of filteredResults) {
+            const sortingTrueMetrics = r.sorting_true_metrics
             for (let u of r.comparison_with_truth) {
                 const key = r.recording.studyName + '::' + r.recording.name + '::' + u.unit_id
                 if (!(key in X)) {
-                    const tu = {
+                    const tu: TrueUnit = {
                         recording: r.recording,
-                        comparisonWithTruthUnitsBySorter: {}
+                        trueUnitId: u.unit_id,
+                        comparisonWithTruthUnitsBySorter: {},
+                        trueUnitMetrics: {} as {[key: string]: any},
+                        result: r
+                    }
+                    if (sortingTrueMetrics) {
+                        const b = sortingTrueMetrics.unit_metrics.filter(um => (um['unitId'] === u.unit_id))[0]
+                        if (b) {
+                            for (let k in b) {
+                                if (k !== 'unitId') {
+                                    tu.trueUnitMetrics[k] = b[k]
+                                }
+                            }
+                        }
                     }
                     X[key] = tu
                     trueUnits.push(tu)
@@ -184,6 +209,8 @@ const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, 
         }
         return trueUnits
     }, [results, page])
+
+    console.log('--- tu', trueUnits)
 
     return (
         <div style={{padding: 50}}>
@@ -240,9 +267,19 @@ const SpikeforestWorkflowResultsView: FunctionComponent<Props> = ({data, width, 
                             />
                             {
                                 trueUnits ? (
-                                    <TrueUnitsTable
-                                        trueUnits={trueUnits}
-                                    />
+                                    <span>
+                                        <h3>&nbsp;</h3>
+                                        <h3>Results for individual true units</h3>
+                                        <TrueUnitsTable
+                                            sorterNames={organizedResults.sorterNames}
+                                            trueUnitMetricNames={organizedResults.trueUnitMetricNames}
+                                            trueUnits={trueUnits}
+                                            metricValueForUnit={metricValueForUnit}
+                                            formatMetricValue={formatMetricValue}
+                                            formatTrueUnitMetricValue={formatTrueUnitMetricValue}
+                                            setPage={setPage}
+                                        />
+                                    </span>
                                 ) : <span />
                             }
                         </div>
